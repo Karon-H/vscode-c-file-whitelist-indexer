@@ -1,3 +1,23 @@
 node_modules/
 out/
 *.vsix
+
+# === 隐私/安全：禁止提交 ===
+.env
+.env.*
+*.local
+secrets/
+credentials.*
+*.pem
+*.key
+*.log
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+.vs/
+.vscode/settings.json
+.vscode/tasks.json
+.vscode/launch.json
+.DS_Store
+Thumbs.db

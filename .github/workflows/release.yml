@@ -1,0 +1,90 @@
+name: Build & Release
+
+on:
+  push:
+    branches:
+      - main
+      - master
+    tags:
+      - 'v*'
+
+jobs:
+  ###########################################################################
+  # BUILD: 每次 push 都编译打包，上传 VSIX 作为构建产物
+  ###########################################################################
+  build:
+    name: Build VSIX
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check
+        run: npx tsc -p ./ --noEmit
+
+      - name: Compile
+        run: npx tsc -p ./
+
+      - name: Package VSIX
+        run: npx vsce package
+
+      - name: Upload VSIX as workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: vsix-package
+          path: ./*.vsix
+          retention-days: 30
+
+  ###########################################################################
+  # RELEASE: 仅当推送 v* tag 时创建 GitHub Release 并上传 VSIX
+  ###########################################################################
+  release:
+    name: Create Release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download built VSIX
+        uses: actions/download-artifact@v4
+        with:
+          name: vsix-package
+
+      - name: Determine VSIX filename
+        id: vsix
+        shell: bash
+        run: |
+          echo "file=$(ls *.vsix | head -1)" >> "$GITHUB_OUTPUT"
+          echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
+          body: |
+            ## ${{ github.ref_name }}
+
+            - 自动构建时间：${{ github.event.repository.updated_at }}
+            - 构建编号：${{ github.run_number }}
+
+            ### 安装方式
+
+            1. 下载 `.vsix` 文件
+            2. 在 VS Code 中按 `Ctrl+Shift+P` → `Extensions: Install from VSIX...`
+            3. 选择下载的 `.vsix` 文件
+          files: ${{ steps.vsix.outputs.file }}
+          generate_release_notes: true
