@@ -1,63 +1,97 @@
 # C File Whitelist Indexer
 
-这个 VSCode 扩展的目标很单一:
+> 过滤 C/C++ 跳转结果，只保留当前工程实际参与编译的源文件。
 
-- 保留 `cpptools` 或 `clangd` 的解析能力
-- 在“转到定义 / 转到实现”结果返回后
-- 过滤掉不在工程白名单里的 `.c/.cpp` 候选
+[![VS Code](https://img.shields.io/badge/VS%20Code-%5E1.90.0-007ACC?logo=visualstudiocode)](https://code.visualstudio.com)
+[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-现在的实现还会直接接管常用跳转命令：
+---
 
-- `Go to Definition`
-- `Peek Definition`
-- `Go to Implementation`
-- `Peek Implementation`
+## 概述 {#overview}
 
-这样可以避免只注册额外 provider 时，被底层 `cpptools` 结果再次混入的问题。
+**C File Whitelist Indexer** 是一个 VS Code 扩展，解决 IAR / HFP 等嵌入式项目中**同名符号跳转候选过多**的问题。
 
-它适合 IAR / HFP 这种场景:
+典型场景：
 
-- 同一个 `sdk/src/drivers` 里有很多 `adc_*_driver.c`
-- 它们内部都有同名实现，比如 `adc_driver`
-- VSCode 会把很多同名实现一起列出来
+- SDK 中有多个 `adc_*_driver.c`，内部都有同名的 `adc_driver` 实现
+- 默认 `Go to Definition` 会列出所有同名候选，难以定位到当前工程实际使用的文件
+- 本插件在跳转结果返回后进行**白名单过滤**，只保留参与当前编译的 `.c/.cpp` 文件
 
-这个扩展不能替代编译数据库，也不能修正头文件搜索。
-它解决的是“定义候选太多，尤其是很多不参与当前工程编译的 `.c`”这个问题。
+> ⚠ 本插件不替代编译数据库，不修正头文件搜索路径。它解决的是**定义候选过多**的问题。
 
-如果你同时在用 `parse_iar_ewp.py`：
+---
 
-- 推荐把它生成的 `.vscode/source_whitelist_<配置名>.json` 作为插件输入
-- `selected_drivers_<配置名>.json` 仅用于人工核对，不是插件输入文件
+## 工作方式 {#how-it-works}
 
-## 1. 工作方式
-
-扩展会读取下面任意一种白名单来源:
-
-- `compile_commands.json`
-- 自定义 `source_whitelist.json`
-
-然后在 `Go to Definition` / `Go to Implementation` 返回结果后做过滤:
-
-- `.c/.cc/.cpp/.cxx` 只有在白名单中才保留
-- `.h/.hpp` 默认保留
-- 如果存在白名单中的 `.c` 结果，默认优先返回它
-
-如果白名单过滤后只剩 1 个结果，会直接打开。
-
-如果还剩多个白名单结果：
-
-- `Peek` 会只显示过滤后的候选
-- 普通跳转会弹出一个只包含过滤后结果的选择框
-
-## 2. 推荐搭配
-
-最推荐直接使用你现有脚本生成的编译数据库:
-
-```bash
-parse_iar_ewp.exe app.ewp --config combin_all_debug --write-vscode --with-compile-commands
+```
+ ┌─────────────────────┐
+ │  用户触发跳转 (F12)  │
+ └─────────┬───────────┘
+           ▼
+ ┌─────────────────────┐
+ │  cpptools/clangd    │
+ │  返回所有定义候选    │
+ └─────────┬───────────┘
+           ▼
+ ┌─────────────────────┐
+ │  Whitelist Filter   │ ◄── 加载白名单文件
+ │  - 保留匹配的 .c    │
+ │  - 保留 .h 头文件    │
+ │  - 过滤无关 .c      │
+ └─────────┬───────────┘
+           ▼
+ ┌─────────────────────┐
+ │  返回过滤后的结果    │
+ └─────────────────────┘
 ```
 
-然后在工作区设置里写:
+### 过滤规则
+
+| 文件类型 | 行为 |
+|----------|------|
+| `.c / .cc / .cpp / .cxx` | **仅保留**在白名单中的文件 |
+| `.h / .hh / .hpp / .hxx` | 默认**全部保留** |
+| 其他类型 | 全部保留 |
+
+### 结果处理
+
+- 过滤后只剩 **1 个** → 直接打开
+- 过滤后剩 **多个** → `Peek` 仅显示过滤候选；`Go to Definition` 弹出过滤后选择框
+- 白名单中有 `.c` 结果时 → **优先返回** `.c` 文件
+
+---
+
+## 安装 {#installation}
+
+### 从 GitHub 安装
+
+```bash
+# 1. 克隆仓库
+git clone https://github.com/Karon-H/vscode-c-file-whitelist-indexer.git
+
+# 2. 安装依赖并打包
+cd vscode-c-file-whitelist-indexer
+npm install
+npm run package
+
+# 3. 在 VS Code 中安装生成的 .vsix 文件
+#    按 Ctrl+Shift+P → "Extensions: Install from VSIX..."
+```
+
+### 快速打包
+
+```powershell
+# Windows PowerShell
+powershell -ExecutionPolicy Bypass -File .\build.ps1
+```
+
+---
+
+## 配置 {#configuration}
+
+### 方式一：使用编译数据库（推荐）
+
+如果你有 `compile_commands.json`，插件会将其中的源文件列表作为白名单。
 
 ```json
 {
@@ -65,22 +99,20 @@ parse_iar_ewp.exe app.ewp --config combin_all_debug --write-vscode --with-compil
 }
 ```
 
-这样扩展会把 `compile_commands` 里出现的源文件当成“参与当前工程编译的源文件白名单”。
+### 方式二：使用自定义白名单
 
-## 3. 也支持自定义白名单
-
-如果你不想生成 `compile_commands.json`，也可以手写一个:
+创建一个 JSON 文件，列出参与编译的源文件：
 
 ```json
 {
   "files": [
-    "C:\\code\\project\\sdk\\src\\drivers\\adc_rn8615_v2_driver.c",
-    "C:\\code\\project\\sdk\\src\\drivers\\rtc_rn8615_v2_driver.c"
+    "C:\\project\\sdk\\src\\drivers\\adc_rn8615_v2_driver.c",
+    "C:\\project\\sdk\\src\\drivers\\rtc_rn8615_v2_driver.c"
   ]
 }
 ```
 
-然后配置:
+然后在设置中指向它：
 
 ```json
 {
@@ -88,96 +120,101 @@ parse_iar_ewp.exe app.ewp --config combin_all_debug --write-vscode --with-compil
 }
 ```
 
-如果你在用 `parse_iar_ewp.py`，也可以直接生成这个文件：
+### 方式三：图形化配置
+
+按 `Ctrl+Shift+P`，执行命令：
+
+```
+C File Whitelist Indexer: Configure
+```
+
+向导会自动扫描工作区中的 `source_whitelist_*.json` 或 `compile_commands_*.json`，选择后自动写入配置。
+
+---
+
+## 完整设置项 {#settings}
+
+| 设置项 | 默认值 | 说明 |
+|--------|--------|------|
+| `cFileWhitelistIndexer.enabled` | `true` | 启用白名单过滤 |
+| `cFileWhitelistIndexer.compileCommandsPath` | `""` | `compile_commands.json` 路径 |
+| `cFileWhitelistIndexer.whitelistFile` | `""` | 自定义白名单 JSON 路径 |
+| `cFileWhitelistIndexer.preferWhitelistedSource` | `true` | 优先返回白名单中的 `.c` 结果 |
+| `cFileWhitelistIndexer.allowHeaderResults` | `true` | 保留头文件结果 |
+| `cFileWhitelistIndexer.showStatusMessages` | `true` | 重载白名单时显示提示信息 |
+
+---
+
+## 命令 {#commands}
+
+| 命令 | 说明 |
+|------|------|
+| `C File Whitelist Indexer: Reload Whitelist` | 手动重载白名单 |
+| `C File Whitelist Indexer: Configure` | 打开图形化配置向导 |
+
+---
+
+## 推荐搭配：parse_iar_ewp {#integration}
+
+如果你使用 IAR 工程，推荐搭配 [parse_iar_ewp](https://github.com/Karon-H/parse_iar_ewp) 使用：
 
 ```bash
+# 生成 VSCode 配置 + 编译数据库
+parse_iar_ewp.exe app.ewp --config combin_all_debug --write-vscode --with-compile-commands
+
+# 或生成白名单文件
 parse_iar_ewp.exe app.ewp --config combin_all_debug --write-vscode --emit-whitelist-for-vscode-plugin
 ```
 
-默认文件名形如：
+执行后会在 `.vscode/` 下生成 `source_whitelist_*.json` 或 `compile_commands_*.json`，插件会自动识别。
 
-- `.vscode/source_whitelist_combin_all_debug.json`
+---
 
-## 4. 关键设置
+## 快速验证 {#quick-test}
 
-```json
-{
-  "cFileWhitelistIndexer.enabled": true,
-  "cFileWhitelistIndexer.preferWhitelistedSource": true,
-  "cFileWhitelistIndexer.allowHeaderResults": true,
-  "cFileWhitelistIndexer.compileCommandsPath": "${workspaceFolder}\\.vscode\\compile_commands_combin_all_debug.json",
-  "cFileWhitelistIndexer.showStatusMessages": true
-}
-```
+1. 安装插件并配置白名单文件
+2. 按 `Ctrl+Shift+P`，执行 `C File Whitelist Indexer: Reload Whitelist`
+3. 打开一个 `.c` 文件，按 `F12` 跳转到符号定义
+4. 观察结果是否只包含白名单中的文件
 
-## 4.1 图形化配置
+---
 
-如果你不想手改 `settings.json`，可以直接在 VSCode 里执行命令：
+## 当前限制 {#limitations}
 
-- `C File Whitelist Indexer: Configure`
+- 只能过滤 VS Code **已经找到**的定义结果
+- 如果底层语言服务本身返回的结果就不正确，本插件无法补全
+- 最佳效果仍然依赖准确的 `compile_commands.json` 和收窄的 `browse.path`
 
-这个向导会：
+---
 
-- 自动扫描工作区里的 `.vscode/source_whitelist_*.json`
-- 或自动扫描 `.vscode/compile_commands_*.json`
-- 让你点选要使用哪个文件
-- 自动写入工作区设置
-- 自动执行一次白名单重载
-
-对于你当前这种 IAR 工程，优先推荐选：
-
-- `使用 source_whitelist 文件`
-
-## 5. 本地打包
+## 开发 {#development}
 
 ```bash
+# 安装依赖
 npm install
+
+# 编译
 npm run compile
+
+# 类型检查
+npm run check
+
+# 打包
 npm run package
 ```
 
-产物会是一个 `.vsix`，可直接在 VSCode 安装。
+### 项目结构
 
-也可以直接执行:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\build.ps1
+```
+src/
+  extension.ts    # 主逻辑：白名单状态管理 + Provider 注册
+package.json      # 插件 manifest
+tsconfig.json     # TypeScript 配置
+build.ps1         # 一键构建脚本
 ```
 
-## 5.1 安装后建议
+---
 
-工作区 `settings.json` 可以先这样配:
+## License {#license}
 
-```json
-{
-  "cFileWhitelistIndexer.enabled": true,
-  "cFileWhitelistIndexer.preferWhitelistedSource": true,
-  "cFileWhitelistIndexer.allowHeaderResults": true,
-  "cFileWhitelistIndexer.compileCommandsPath": "${workspaceFolder}\\.vscode\\compile_commands_combin_all_debug.json"
-}
-```
-
-然后执行命令:
-
-- `C File Whitelist Indexer: Reload Whitelist`
-
-再测试 `adc_driver` / `rtc_driver` 这类符号跳转结果。
-
-## 6. 当前限制
-
-- 它只能过滤 VSCode 已经找到的定义结果
-- 如果底层语言服务根本没返回正确实现，这个扩展也“变不出来”
-- 最佳效果仍然依赖:
-  - 尽量准确的 `compile_commands.json`
-  - 尽量收窄的 `browse.path`
-
-## 7. 如果你发现“还是看到很多别的 .c”
-
-先确认以下几点：
-
-- 已安装的是这次重新打包后的新版 `.vsix`
-- 执行过 `C File Whitelist Indexer: Reload Whitelist`
-- 工作区设置里确实指向了当前配置对应的 `.vscode/source_whitelist_*.json` 或 `compile_commands_*.json`
-- 你触发的是 VSCode 自带的跳转命令，比如 `F12`、`Alt+F12`、右键“转到定义/查看定义”
-
-如果你安装的是旧版扩展，虽然 provider 内部做了过滤，但 VSCode 仍可能把 `cpptools` 自己的候选一起合并显示，看起来就像“没有屏蔽其他 .c 文件”。
+[MIT](LICENSE)
