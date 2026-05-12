@@ -2,8 +2,8 @@
   "name": "c-file-whitelist-indexer",
   "displayName": "C File Whitelist Indexer",
   "description": "Filter C/C++ definition results by a project source whitelist.",
-  "version": "0.0.1",
-  "publisher": "local",
+  "version": "0.1.0",
+  "publisher": "Karon-H",
   "license": "UNLICENSED",
   "repository": {
     "type": "git",
@@ -79,12 +79,26 @@
   "scripts": {
     "compile": ".\\node_modules\\.bin\\tsc.cmd -p ./",
     "package": ".\\node_modules\\.bin\\vsce.cmd package",
-    "check": ".\\node_modules\\.bin\\tsc.cmd -p ./ --noEmit"
+    "check": ".\\node_modules\\.bin\\tsc.cmd -p ./ --noEmit",
+    "lint": ".\\node_modules\\.bin\\eslint.cmd src/",
+    "lint:fix": ".\\node_modules\\.bin\\eslint.cmd src/ --fix",
+    "format": ".\\node_modules\\.bin\\prettier.cmd --write \"src/**/*.ts\"",
+    "format:check": ".\\node_modules\\.bin\\prettier.cmd --check \"src/**/*.ts\"",
+    "pretest": "npm run compile",
+    "test": ".\\node_modules\\.bin\\mocha.cmd out/test/**/*.test.js"
   },
   "devDependencies": {
+    "@types/mocha": "^10.0.10",
     "@types/node": "^20.14.8",
     "@types/vscode": "^1.90.0",
+    "@typescript-eslint/eslint-plugin": "^8.59.3",
+    "@typescript-eslint/parser": "^8.59.3",
+    "@vscode/test-electron": "^2.5.2",
     "@vscode/vsce": "^3.6.2",
+    "eslint": "^10.3.0",
+    "eslint-config-prettier": "^10.1.8",
+    "mocha": "^11.7.5",
+    "prettier": "^3.8.3",
     "typescript": "^5.5.4"
   }
 }

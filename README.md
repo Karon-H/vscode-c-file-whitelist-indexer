@@ -112,6 +112,10 @@ powershell -ExecutionPolicy Bypass -File .\build.ps1
 }
 ```
 
+> **命名约定**：插件会自动识别 `source_whitelist_*.json` 模式的文件，
+> 例如 `source_whitelist_debug.json`、`source_whitelist_release.json`。
+> 你可以为不同构建配置维护多个白名单文件，通过配置向导快速切换。
+
 然后在设置中指向它：
 
 ```json

@@ -4,3 +4,13 @@ node_modules/**
 !node_modules
 !node_modules/@vscode
 !node_modules/@types
+
+# === 保留 VS Code 推荐扩展配置和示例文件 ===
+!.vscode/extensions.json
+!.vscode/source_whitelist.example.json
+
+# === 发布时排除的辅助文件 ===
+.githooks/
+.github/
+setup-hooks.ps1
+build.ps1

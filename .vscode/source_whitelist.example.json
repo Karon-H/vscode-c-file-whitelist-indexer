@@ -1,0 +1,17 @@
+{
+  "comment": "白名单文件示例 — 仅保留当前工程实际参与编译的源文件",
+  "comment2": "文件路径支持正斜杠 / 和反斜杠 \\，不区分大小写",
+  "comment3": "你可以创建多个文件：source_whitelist_debug.json / source_whitelist_release.json",
+  "files": [
+    "src/main.c",
+    "src/adc/adc_rn8615_v2_driver.c",
+    "src/rtc/rtc_rn8615_v2_driver.c",
+    "src/uart/uart_dma_driver.c",
+    "src/spi/spi_flash_driver.c",
+    "src/timer/timer_pwm_driver.c",
+    "lib/fatfs/diskio.c",
+    "lib/fatfs/ff.c",
+    "lib/freertos/tasks.c",
+    "lib/freertos/queue.c"
+  ]
+}
