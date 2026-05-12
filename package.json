@@ -1,0 +1,90 @@
+{
+  "name": "c-file-whitelist-indexer",
+  "displayName": "C File Whitelist Indexer",
+  "description": "Filter C/C++ definition results by a project source whitelist.",
+  "version": "0.0.1",
+  "publisher": "local",
+  "license": "UNLICENSED",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Karon-H/vscode-c-file-whitelist-indexer.git"
+  },
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Other"
+  ],
+  "activationEvents": [
+    "onLanguage:c",
+    "onLanguage:cpp",
+    "onCommand:cFileWhitelistIndexer.reload",
+    "onCommand:cFileWhitelistIndexer.configure"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "cFileWhitelistIndexer.reload",
+        "title": "C File Whitelist Indexer: Reload Whitelist"
+      },
+      {
+        "command": "cFileWhitelistIndexer.configure",
+        "title": "C File Whitelist Indexer: Configure"
+      }
+    ],
+    "configuration": {
+      "title": "C File Whitelist Indexer",
+      "properties": {
+        "cFileWhitelistIndexer.enabled": {
+          "type": "boolean",
+          "default": true,
+          "scope": "resource",
+          "description": "Enable filtering for Go to Definition and Go to Implementation results."
+        },
+        "cFileWhitelistIndexer.preferWhitelistedSource": {
+          "type": "boolean",
+          "default": true,
+          "scope": "resource",
+          "description": "When both header and whitelisted source results exist, prefer the whitelisted source result."
+        },
+        "cFileWhitelistIndexer.compileCommandsPath": {
+          "type": "string",
+          "default": "",
+          "scope": "resource",
+          "description": "Path to compile_commands.json. The file list will be used as the source whitelist."
+        },
+        "cFileWhitelistIndexer.whitelistFile": {
+          "type": "string",
+          "default": "",
+          "scope": "resource",
+          "description": "Optional path to a JSON whitelist file. Supported shape: { \"files\": [\"a.c\"] }."
+        },
+        "cFileWhitelistIndexer.allowHeaderResults": {
+          "type": "boolean",
+          "default": true,
+          "scope": "resource",
+          "description": "Keep header results even when source filtering is active."
+        },
+        "cFileWhitelistIndexer.showStatusMessages": {
+          "type": "boolean",
+          "default": true,
+          "scope": "resource",
+          "description": "Show a message when the whitelist is reloaded or invalid."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": ".\\node_modules\\.bin\\tsc.cmd -p ./",
+    "package": ".\\node_modules\\.bin\\vsce.cmd package",
+    "check": ".\\node_modules\\.bin\\tsc.cmd -p ./ --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.8",
+    "@types/vscode": "^1.90.0",
+    "@vscode/vsce": "^3.6.2",
+    "typescript": "^5.5.4"
+  }
+}
